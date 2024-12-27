@@ -9,22 +9,23 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <tdlight.version>2.8.10.1</tdlight.version>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>com.github.tdlight-team</groupId>
+            <groupId>it.tdlight</groupId>
             <artifactId>tdlight-java</artifactId>
-            <version>2.8.1.2</version>
+            <version>${tdlight.version}</version>
         </dependency>
 
         <dependency>
-            <groupId>com.github.tdlight-team</groupId>
+            <groupId>it.tdlight</groupId>
             <artifactId>tdlight-natives-windows-amd64</artifactId>
-            <version>2.8.1.2</version>
+            <version>${tdlight.version}</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -66,6 +67,15 @@
             </plugin>
 
             <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>com.SkytecGamesTest.TelegramSessionTester</mainClass>
+                </configuration>
+            </plugin>
+
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.2.4</version>
@@ -102,8 +112,24 @@
 
     <repositories>
         <repository>
+            <id>maven-central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+        <repository>
+            <id>tdlight-repo</id>
+            <name>TDLight Repository</name>
+            <url>https://repo.tdlight-team.it/releases</url>
+        </repository>
+        <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
     </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>maven-central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </pluginRepository>
+    </pluginRepositories>
 </project> 
