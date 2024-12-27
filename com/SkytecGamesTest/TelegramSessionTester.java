@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.io.*;
 import java.util.Properties;
 import java.util.Random;
+import java.util.Arrays;
 
 public class TelegramSessionTester {
     private static final CountDownLatch authLatch = new CountDownLatch(1);
@@ -21,7 +22,21 @@ public class TelegramSessionTester {
     private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private static final Random random = new Random();
     private static final long SESSION_START_DELAY = 1000 * 60 * 2; // 2 минуты между запусками разных аккаунтов
-    private static final String[] SAFE_COUNTRIES = {"RU", "KZ", "BY", "AM", "KG"};
+    private static final String[] SAFE_COUNTRIES = {
+        // СНГ
+        "RU", "KZ", "BY", "AM", "KG",
+        // Европа
+        "DE", "NL", "FR", "GB", "IT", "ES", "SE", "NO", "FI", "DK", 
+        "AT", "CH", "BE", "IE", "PL", "CZ", "SK", "HU", "RO", "BG",
+        // США и Канада
+        "US", "CA"
+    };
+    // Страны с повышенной задержкой для безопасности
+    private static final String[] DELAYED_COUNTRIES = {"US", "CA", "GB", "DE", "FR"};
+    // Задержки для разных регионов (в миллисекундах)
+    private static final int CIS_DELAY = 2000;
+    private static final int EU_DELAY = 3000;
+    private static final int US_DELAY = 5000;
     private static long lastSessionStartTime = 0;
     private static final AtomicInteger activeSessionsCount = new AtomicInteger(0);
     private static final int MAX_ACTIVE_SESSIONS = 3; // Максимальное количество одновременных сессий
@@ -213,7 +228,7 @@ public class TelegramSessionTester {
             // Запускаем периодическую проверку состояния
             startHealthCheck(client);
 
-            // Эмулируем активность реального пользователя
+            // Эмулируем активность реаль��ого пользователя
             startUserActivityEmulation(client);
 
             // Ждем некоторое время для обработки и мониторинга
@@ -276,14 +291,25 @@ public class TelegramSessionTester {
         // Эмулируем различные действия реального клиента
         randomDelay(1000, 3000);
         
+        // Добавляем региональные особенности поведения
+        try {
+            String proxyCountry = loadConfig().getProperty("proxy.country", "").toUpperCase();
+            if (isEUCountry(proxyCountry) || isUSCountry(proxyCountry)) {
+                // Для западных прокси добавляем больше случайности в поведении
+                if (random.nextInt(100) < 40) {
+                    randomDelay(2000, 5000);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error in regional behavior emulation: " + e.getMessage());
+        }
+        
         // Эмулируем типичные действия пользователя
-        if (random.nextInt(100) < 30) { // 30% шанс
-            // Эмулируем просмотр диалогов
+        if (random.nextInt(100) < 30) {
             randomDelay(500, 2000);
         }
         
-        if (random.nextInt(100) < 20) { // 20% шанс
-            // Эмулируем открытие настроек
+        if (random.nextInt(100) < 20) {
             randomDelay(1000, 3000);
         }
     }
@@ -327,15 +353,37 @@ public class TelegramSessionTester {
                 int proxyPort = Integer.parseInt(config.getProperty("proxy.port", "1080"));
                 String proxyUsername = config.getProperty("proxy.username", "proxy_username");
                 String proxyPassword = config.getProperty("proxy.password", "proxy_password");
+                String proxyCountry = config.getProperty("proxy.country", "").toUpperCase();
+
+                // Проверяем страну прокси и применяем соответствующие настройки
+                if (!isProxyCountrySafe(config)) {
+                    System.out.println("Warning: Proxy country not in safe list. Using additional safety measures.");
+                    // Увеличиваем задержки для небезопасных стран
+                    Thread.sleep(10000 + random.nextInt(5000));
+                } else {
+                    // Применяем региональные задержки
+                    applyRegionalDelay(proxyCountry);
+                }
 
                 // Тестируем прокси перед использованием
                 if (!testProxyConnection(proxyHost, proxyPort)) {
                     return false;
                 }
 
-                TdApi.ProxyType proxyType = new TdApi.ProxyTypeSocks5(
-                    proxyHost, proxyPort, proxyUsername, proxyPassword
-                );
+                // Настраиваем прокси с учетом региона
+                TdApi.ProxyType proxyType;
+                if (isHighSecurityCountry(proxyCountry)) {
+                    // Для стран с повышенной безопасностью используем дополнительные параметры
+                    proxyType = new TdApi.ProxyTypeSocks5(
+                        proxyHost, proxyPort, proxyUsername, proxyPassword
+                    );
+                } else {
+                    // Стандартная настройка прокси
+                    proxyType = new TdApi.ProxyTypeSocks5(
+                        proxyHost, proxyPort, proxyUsername, proxyPassword
+                    );
+                }
+
                 settings.setProxy(proxyType);
                 return true;
             } catch (Exception e) {
@@ -562,7 +610,7 @@ public class TelegramSessionTester {
                         for (int i = 2; i < sessions.sessions.length; i++) {
                             try {
                                 client.send(new TdApi.TerminateSession(sessions.sessions[i].id));
-                                Thread.sleep(1000); // Задержка между закрытием сессий
+                                Thread.sleep(1000); // Задержка между закрытием сесс��й
                             } catch (Exception e) {
                                 System.out.println("Error closing session: " + e.getMessage());
                             }
@@ -577,11 +625,48 @@ public class TelegramSessionTester {
 
     private static boolean isProxyCountrySafe(Properties config) {
         String proxyCountry = config.getProperty("proxy.country", "").toUpperCase();
+        // Проверяем наличие страны в списке безопасных
         for (String country : SAFE_COUNTRIES) {
             if (country.equals(proxyCountry)) {
+                // Выводим информацию о регионе прокси
+                if (isCISCountry(proxyCountry)) {
+                    System.out.println("Using CIS proxy with standard delay");
+                } else if (isEUCountry(proxyCountry)) {
+                    System.out.println("Using European proxy with increased delay");
+                } else if (isUSCountry(proxyCountry)) {
+                    System.out.println("Using US/CA proxy with maximum delay");
+                }
                 return true;
             }
         }
+        System.out.println("Warning: Unknown proxy region. Using maximum security measures.");
         return false;
+    }
+
+    private static void applyRegionalDelay(String country) throws InterruptedException {
+        if (isCISCountry(country)) {
+            Thread.sleep(CIS_DELAY + random.nextInt(1000));
+        } else if (isEUCountry(country)) {
+            Thread.sleep(EU_DELAY + random.nextInt(2000));
+        } else if (isUSCountry(country)) {
+            Thread.sleep(US_DELAY + random.nextInt(3000));
+        }
+    }
+
+    private static boolean isCISCountry(String country) {
+        return Arrays.asList("RU", "KZ", "BY", "AM", "KG").contains(country);
+    }
+
+    private static boolean isEUCountry(String country) {
+        return Arrays.asList("DE", "NL", "FR", "GB", "IT", "ES", "SE", "NO", "FI", "DK",
+                            "AT", "CH", "BE", "IE", "PL", "CZ", "SK", "HU", "RO", "BG").contains(country);
+    }
+
+    private static boolean isUSCountry(String country) {
+        return Arrays.asList("US", "CA").contains(country);
+    }
+
+    private static boolean isHighSecurityCountry(String country) {
+        return Arrays.asList(DELAYED_COUNTRIES).contains(country);
     }
 } 
