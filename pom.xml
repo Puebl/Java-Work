@@ -12,20 +12,19 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <tdlight.version>3.2.2.0</tdlight.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>it.tdlight</groupId>
             <artifactId>tdlight-java</artifactId>
-            <version>${tdlight.version}</version>
+            <version>2.8.10.1</version>
         </dependency>
 
         <dependency>
             <groupId>it.tdlight</groupId>
             <artifactId>tdlight-natives-windows-amd64</artifactId>
-            <version>${tdlight.version}</version>
+            <version>2.8.10.1</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -68,31 +67,6 @@
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.3.0</version>
-                <configuration>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.SkytecGamesTest.TelegramSessionTester</mainClass>
-                        </manifest>
-                    </archive>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>make-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.2.4</version>
                 <executions>
@@ -102,11 +76,23 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>com.SkytecGamesTest.TelegramSessionTester</mainClass>
                                 </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
                         </configuration>
                     </execution>
                 </executions>
@@ -116,9 +102,18 @@
 
     <repositories>
         <repository>
-            <id>mchv</id>
-            <name>MCHV Apache Maven Packages</name>
-            <url>https://mvn.mchv.eu/repository/mchv/</url>
+            <id>central</id>
+            <name>Central Repository</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+        <repository>
+            <id>tdlight-java</id>
+            <name>TDLight Java Repository</name>
+            <url>https://tdlight-team.github.io/tdlight-java</url>
         </repository>
     </repositories>
 </project> 
